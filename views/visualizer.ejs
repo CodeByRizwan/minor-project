@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wikipedia Edit Visualizer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    form {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    input[type="text"] {
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .data-table {
+      margin: 0 auto;
+      max-width: 600px;
+      border-collapse: collapse;
+    }
+    .data-table th, .data-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    .data-table th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Wikipedia Edit Visualizer</h1>
+
+  <form action="/wiki" method="GET">
+    <input type="text" name="title" placeholder="Enter Wikipedia page title or URL" required />
+    <button type="submit">Fetch Edits</button>
+  </form>
+
+  <% if (chartData) { %>
+    <h2>Edits over Time for "<%= pageTitle %>"</h2>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Number of Edits</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (let i = 0; i < chartData.labels.length; i++) { %>
+          <tr>
+            <td><%= chartData.labels[i] %></td>
+            <td><%= chartData.data[i] %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  <% } %>
+
+</body>
+</html>
