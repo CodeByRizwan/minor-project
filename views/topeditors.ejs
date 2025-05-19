@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Top Editors</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center">
+ <div class="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8 mt-10">
+  <h1 class="text-2xl font-bold text-purple-700 mb-6 text-center">
+    Top Editors for "<%= title %>"
+  </h1>
+  <% if (error) { %>
+    <div class="bg-red-100 text-red-700 p-4 rounded shadow mb-4 text-center">
+      <%= error %>
+    </div>
+  <% } %>
+  <% if (editors && editors.length) { %>
+    <table class="min-w-full divide-y divide-gray-200 mb-8 rounded-xl overflow-hidden shadow">
+      <thead class="bg-purple-100">
+        <tr>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-purple-800">Rank</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-purple-800">Editor</th>
+          <th class="px-6 py-3 text-left text-sm font-semibold text-purple-800">Edits</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        <% editors.forEach((editor, i) => { %>
+          <tr class="hover:bg-purple-50 transition <%= i === 0 ? 'bg-yellow-100 font-bold' : '' %>">
+            <td class="px-6 py-4 text-gray-700 text-lg"><%= i + 1 %></td>
+            <td class="px-6 py-4 text-gray-800 flex items-center gap-2">
+              <span class="inline-block w-8 h-8 rounded-full bg-purple-200 text-purple-800 flex items-center justify-center font-bold text-lg">
+                <%= editor.user[0] ? editor.user[0].toUpperCase() : '?' %>
+              </span>
+              <span><%= editor.user %></span>
+              <% if (i === 0) { %>
+                <span title="Top Editor" class="ml-2">👑</span>
+              <% } %>
+            </td>
+            <td class="px-6 py-4 text-gray-700 text-lg"><%= editor.count %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p class="text-center text-gray-500">No editor data available for this page.</p>
+  <% } %>
+</div>
+</body>
+</html>

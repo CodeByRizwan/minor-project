@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wikipedia Visualizer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .preview-area { font-size: 0.85rem; max-height: 90px; overflow: auto; margin-top: 0.5rem; }
+    .preview-table { font-size: 0.8rem; }
+    .preview-table th, .preview-table td { padding: 0.25rem 0.5rem; }
+    .feature-card { transition: background 0.2s, color 0.2s, border 0.2s, box-shadow 0.2s; }
+    .feature-card.inactive {
+      background: #f3f4f6 !important;
+      color: #a1a1aa !important;
+      border-color: #e5e7eb !important; 
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .feature-card.active {
+      color: #222 !important;
+      border-width: 2px;
+      box-shadow: 0 4px 16px 0 rgba(0,0,0,0.10);
+    }
+    .feature-card.active.edits {
+      background: #dbeafe !important;
+      border-color: #93c5fd !important;
+    }
+    .feature-card.active.wordcloud {
+      background: #bbf7d0 !important;
+      border-color: #6ee7b7 !important;
+    }
+    .feature-card.active.topeditors {
+      background: #f3e8ff !important;
+      border-color: #d8b4fe !important;
+    }
+    .feature-card.active.timeline {
+      background: #fef9c3 !important;
+      border-color: #fde68a !important;
+    }
+    .feature-card.active.edits:hover {
+      background: #2563eb !important;
+      border-color: #2563eb !important;
+      color: #fff !important;
+    }
+    .feature-card.active.wordcloud:hover {
+      background: #059669 !important;
+      border-color: #059669 !important;
+      color: #fff !important;
+    }
+    .feature-card.active.topeditors:hover {
+      background: #a21caf !important;
+      border-color: #a21caf !important;
+      color: #fff !important;
+    }
+    .feature-card.active.timeline:hover {
+      background: #eab308 !important;
+      border-color: #eab308 !important;
+      color: #fff !important;
+    }
+    .preview-area.preview-loading {
+      background: #e5e7eb; 
+      min-height: 48px;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a1a1aa;
+    }
+    .preview-area.preview-loaded {
+      background: transparent;
+      color: inherit;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center">
+  <h1 class="text-4xl font-bold mb-8 text-blue-700">Wikipedia Visualizer</h1>
+  <form id="featureForm" class="mb-8 flex flex-col items-center gap-4">
+    <input 
+      type="text" 
+      name="title" 
+      id="titleInput"
+      placeholder="Enter Wikipedia page title or URL" 
+      required 
+      class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
+    />
+    <div id="cardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 w-full max-w-xl">
+      <button type="button" onclick="goToFeature('edits')" class="feature-card inactive edits px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
+        <span class="text-xl">📈</span>
+        Edits Over Time
+        <div class="preview-area w-full preview-loading" id="editsPreview"></div>
+      </button>
+      <button type="button" onclick="goToFeature('wordcloud')" class="feature-card inactive wordcloud px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
+        <span class="text-xl">☁️</span>
+        Word Cloud
+        <div class="preview-area w-full preview-loading" id="wordcloudPreview"></div>
+      </button>
+      <button type="button" onclick="goToFeature('topeditors')" class="feature-card inactive topeditors px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
+        <span class="text-xl">👤</span>
+        Top Editors
+        <div class="preview-area w-full preview-loading" id="topeditorsPreview"></div>
+      </button>
+      <button type="button" onclick="goToFeature('timeline')" class="feature-card inactive timeline px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
+        <span class="text-xl">🕒</span>
+        Revision Timeline
+        <div class="preview-area w-full preview-loading" id="timelinePreview"></div>
+      </button>
+    </div>
+  </form>
+  <script>
+    function goToFeature(feature) {
+      const title = document.getElementById('titleInput').value.trim();
+      if (!title) {
+        alert('Please enter a Wikipedia page title.');
+        return;
+      }
+      window.location.href = `/${feature}?title=${encodeURIComponent(title)}`;
+    }
+    const titleInput = document.getElementById('titleInput');
+    const cards = document.querySelectorAll('.feature-card');
+    function updateCards() {
+      const hasTitle = titleInput.value.trim().length > 0;
+      cards.forEach(card => {
+        card.classList.remove('active','inactive');
+        card.disabled = true;
+        card.classList.add('inactive');
+      });
+    }
+    titleInput.addEventListener('input', updateCards);
+    updateCards(); 
+
+   
+    let previewTimeout;
+    titleInput.addEventListener('input', function() {
+      clearTimeout(previewTimeout);
+      setPreviewLoading();
+      if (titleInput.value.trim().length > 0) {
+        previewTimeout = setTimeout(fetchPreviews, 500);
+      } else {
+        document.getElementById('editsPreview').innerHTML = '';
+        document.getElementById('wordcloudPreview').innerHTML = '';
+        document.getElementById('topeditorsPreview').innerHTML = '';
+        document.getElementById('timelinePreview').innerHTML = '';
+      }
+    });
+    function setPreviewLoading() {
+      ["editsPreview","wordcloudPreview","topeditorsPreview","timelinePreview"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.add('preview-loading');
+          el.classList.remove('preview-loaded');
+          el.innerHTML = '';
+        }
+      });
+    }
+    function setPreviewLoaded(id, html) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('preview-loading');
+        el.classList.add('preview-loaded');
+        el.innerHTML = html;
+      }
+    }
+   
+    function showAllPreviews(previews) {
+      setPreviewLoaded('editsPreview', previews.edits);
+      setPreviewLoaded('wordcloudPreview', previews.wordcloud);
+      setPreviewLoaded('topeditorsPreview', previews.topeditors);
+      setPreviewLoaded('timelinePreview', previews.timeline);
+      
+      document.querySelector('.feature-card.edits').classList.remove('inactive');
+      document.querySelector('.feature-card.edits').classList.add('active');
+      document.querySelector('.feature-card.edits').disabled = false;
+      document.querySelector('.feature-card.wordcloud').classList.remove('inactive');
+      document.querySelector('.feature-card.wordcloud').classList.add('active');
+      document.querySelector('.feature-card.wordcloud').disabled = false;
+      document.querySelector('.feature-card.topeditors').classList.remove('inactive');
+      document.querySelector('.feature-card.topeditors').classList.add('active');
+      document.querySelector('.feature-card.topeditors').disabled = false;
+      document.querySelector('.feature-card.timeline').classList.remove('inactive');
+      document.querySelector('.feature-card.timeline').classList.add('active');
+      document.querySelector('.feature-card.timeline').disabled = false;
+    }
+    function fetchPreviews() {
+      const title = titleInput.value.trim();
+      if (!title) return;
+      setPreviewLoading();
+      
+      const editsPromise = fetch(`/edits?title=${encodeURIComponent(title)}&preview=1`).then(r=>r.json()).then(data => {
+        if (data && data.labels && data.data && data.labels.length) {
+          let html = '<table class="preview-table w-full"><thead><tr><th>Date</th><th>Edits</th></tr></thead><tbody>';
+          for (let i = Math.max(0, data.labels.length-5); i < data.labels.length; i++) {
+            html += `<tr><td>${data.labels[i]}</td><td>${data.data[i]}</td></tr>`;
+          }
+          html += '</tbody></table>';
+          return html;
+        }
+        return '';
+      });
+      const topeditorsPromise = fetch(`/topeditors?title=${encodeURIComponent(title)}&preview=1`).then(r=>r.json()).then(data => {
+        if (data && data.length) {
+          let html = '<table class="preview-table w-full"><thead><tr><th>Editor</th><th>Edits</th></tr></thead><tbody>';
+          data.slice(0,3).forEach(e => {
+            html += `<tr><td>${e.user}</td><td>${e.count}</td></tr>`;
+          });
+          html += '</tbody></table>';
+          return html;
+        }
+        return '';
+      });
+      const timelinePromise = fetch(`/timeline?title=${encodeURIComponent(title)}&preview=1`).then(r=>r.json()).then(data => {
+        if (data && data.length) {
+          let html = '<ul class="preview-table">';
+          data.slice(-3).forEach(e => {
+            html += `<li><span class='font-semibold text-yellow-700'>${e.user}</span>: <span class='italic text-gray-600'>${e.comment || ''}</span></li>`;
+          });
+          html += '</ul>';
+          return html;
+        }
+        return '';
+      });
+      const wordcloudPromise = fetch(`/wordcloud?title=${encodeURIComponent(title)}&preview=1`).then(r=>r.json()).then(data => {
+        if (data && data.length) {
+          let html = '<div class="flex flex-wrap gap-1">';
+          data.slice(0,5).forEach(w => {
+            html += `<span class='px-2 py-1 rounded bg-green-200 text-green-800'>${w[0]}</span>`;
+          });
+          html += '</div>';
+          return html;
+        }
+        return '';
+      });
+      Promise.all([editsPromise, wordcloudPromise, topeditorsPromise, timelinePromise])
+        .then(([edits, wordcloud, topeditors, timeline]) => {
+          showAllPreviews({ edits, wordcloud, topeditors, timeline });
+        });
+    }
+  </script>
+</body>
+</html>
