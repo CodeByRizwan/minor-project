@@ -30,27 +30,34 @@
       </div>
     <% } %>
     <% if (wordFrequencies && wordFrequencies.length) { %>
-      <div id="wordcloud" style="min-height:400px;"></div>
-      <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.min.js"></script>
+      <div class="flex flex-col items-center">
+        <div class="bg-green-50 rounded-2xl shadow-lg p-4 flex flex-col items-center w-full">
+          <canvas id="wordCanvas" width="600" height="400" class="mx-auto block rounded-lg shadow"></canvas>
+        </div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.1.2/src/wordcloud2.min.js"></script>
       <script>
-        
-        var wordFrequencies =  JSON.stringify(wordFrequencies) ;
-        WordCloud(document.getElementById('wordcloud'), {
-          list: wordFrequencies,
-          gridSize: 12,
-          weightFactor: 18,
-          fontFamily: 'Segoe UI',
-          color: function() {
-           
-            const colors = ['#2563eb', '#059669', '#a21caf', '#eab308'];
-            return colors[Math.floor(Math.random() * colors.length)];
-          },
-          backgroundColor: '#f9fafb',
-          rotateRatio: 0.2,
-          rotationSteps: 2,
-          shuffle: true,
-          drawOutOfBound: false,
-        });
+        var wordList = <%- JSON.stringify(wordFrequencies) %>;
+        if (typeof wordList === 'string') {
+          wordList = JSON.parse(wordList);
+        }
+        if (wordList && wordList.length) {
+          WordCloud(document.getElementById('wordCanvas'), {
+            list: wordList,
+            gridSize: 12,
+            weightFactor: 18,
+            fontFamily: 'Segoe UI',
+            color: function() {
+              const colors = ['#2563eb', '#059669', '#a21caf', '#eab308'];
+              return colors[Math.floor(Math.random() * colors.length)];
+            },
+            backgroundColor: '#f0fdf4',
+            rotateRatio: 0.2,
+            rotationSteps: 2,
+            shuffle: true,
+            drawOutOfBound: false,
+          });
+        }
       </script>
     <% } else { %>
       <p class="text-center text-gray-500">No word frequency data available for this page.</p>

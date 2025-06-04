@@ -1,5 +1,4 @@
 const axios = require('axios');
-
 function extractTitle(input) {
     try {
       const url = new URL(input);
@@ -8,23 +7,17 @@ function extractTitle(input) {
       return input.trim();
     }
   }
-
-
   function groupEditsByDate(timestamps) {
     const counts = {};
-  
     timestamps.forEach(ts => {
       const date = ts.split('T')[0]; 
       counts[date] = (counts[date] || 0) + 1;
     });
-  
     const sortedDates = Object.keys(counts).sort();
     const labels = sortedDates;
     const data = sortedDates.map(date => counts[date]);
-  
     return { labels, data };
   }  
-
   function computeWordFrequencies(text) {
     const stopwords = new Set([
         'the','and','of','to','in','a','is','for','on','with','as','by','at','from','it','an','be','this','that','are','was','or','which','but','not','have','has','had','were','their','they','its','also','can','will','one','all','we','more','other','about','his','her','he','she','you','i','my','your','our','us','them','so','if','no','do','out','up','who','what','when','where','why','how','than','then','into','over','after','before','such','these','those','may','like','just','some','any','each','most','many','been','because','between','during','through','both','under','while','should','could','would','did','does','having','get','got','made','make','using','used','use','see','seen','per','etc','etc.'
@@ -35,13 +28,8 @@ function extractTitle(input) {
             freq[word] = (freq[word] || 0) + 1;
         }
     });
-   
-    return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 100); // top 100 words
+    return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 100);
 }
-
-
-
-
 async function editsHandler(req, res) {
     const input = req.query.title;
     if (!input) {
@@ -73,7 +61,6 @@ async function editsHandler(req, res) {
         } while (continueToken);
         const grouped = groupEditsByDate(timestamps);
         if (req.query.preview === '1') {
-          
             const n = 5;
             const len = grouped.labels.length;
             return res.json({
@@ -92,7 +79,6 @@ async function editsHandler(req, res) {
         res.render('edits', { chartData: null, title: title, error: 'Error fetching data.' });
     }
 }
-
 async function wordCloudHandler(req, res) {
     const input = req.query.title;
     if (!input) {
@@ -101,7 +87,6 @@ async function wordCloudHandler(req, res) {
     }
     const title = extractTitle(input);
     try {
-       
         const response = await axios.get('https://en.wikipedia.org/w/api.php', {
             params: {
                 action: 'query',
@@ -120,7 +105,6 @@ async function wordCloudHandler(req, res) {
         }
         const wordFrequencies = computeWordFrequencies(page.extract);
         if (req.query.preview === '1') {
-           
             return res.json(wordFrequencies.slice(0, 5));
         }
         res.render('wordcloud', { title, wordFrequencies, error: null });
@@ -130,7 +114,6 @@ async function wordCloudHandler(req, res) {
         res.render('wordcloud', { title, wordFrequencies: [], error: 'Error fetching or processing data.' });
     }
 }
-
 async function topEditorsHandler(req, res) {
     const input = req.query.title;
     if (!input) {
@@ -164,7 +147,6 @@ async function topEditorsHandler(req, res) {
             }
             continueToken = response.data.continue?.rvcontinue;
         } while (continueToken);
-        
         const editors = Object.entries(editorsMap)
             .map(([user, count]) => ({ user, count }))
             .sort((a, b) => b.count - a.count)
@@ -179,7 +161,6 @@ async function topEditorsHandler(req, res) {
         res.render('topeditors', { title, editors: [], error: 'Error fetching or processing data.' });
     }
 }
-
 async function timelineHandler(req, res) {
     const input = req.query.title;
     if (!input) {
@@ -213,7 +194,6 @@ async function timelineHandler(req, res) {
             }
             continueToken = response.data.continue?.rvcontinue;
         } while (continueToken && timeline.length < 500); 
-      
         timeline.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         if (req.query.preview === '1') {
             return res.json(timeline.slice(-3));
@@ -225,5 +205,4 @@ async function timelineHandler(req, res) {
         res.render('timeline', { title, timeline: [], error: 'Error fetching or processing data.' });
     }
 }
-
 module.exports = {  editsHandler, wordCloudHandler, topEditorsHandler, timelineHandler };

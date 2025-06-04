@@ -57,55 +57,53 @@
       border-color: #eab308 !important;
       color: #fff !important;
     }
-    .preview-area.preview-loading {
-      background: #e5e7eb; 
-      min-height: 48px;
-      border-radius: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #a1a1aa;
-    }
-    .preview-area.preview-loaded {
-      background: transparent;
-      color: inherit;
-    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center">
   <h1 class="text-4xl font-bold mb-8 text-blue-700">Wikipedia Visualizer</h1>
-  <form id="featureForm" class="mb-8 flex flex-col items-center gap-4">
-    <input 
-      type="text" 
-      name="title" 
-      id="titleInput"
-      placeholder="Enter Wikipedia page title or URL" 
-      required 
-      class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
-    />
+  <form id="featureForm" class="mb-8 flex flex-col items-center gap-4" autocomplete="off">
+    <div class="relative w-80">
+      <input 
+        type="text" 
+        name="title" 
+        id="titleInput"
+        placeholder="Enter Wikipedia page title or URL" 
+        required 
+        class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
+        autocomplete="off"
+      />
+      <ul id="recentDropdown" class="absolute left-0 right-0 bg-white border border-gray-200 rounded-md shadow z-10 mt-1 hidden"></ul>
+    </div>
     <div id="cardGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 w-full max-w-xl">
       <button type="button" onclick="goToFeature('edits')" class="feature-card inactive edits px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
         <span class="text-xl">📈</span>
         Edits Over Time
-        <div class="preview-area w-full preview-loading" id="editsPreview"></div>
+        <div class="preview-area w-full" id="editsPreview"></div>
       </button>
       <button type="button" onclick="goToFeature('wordcloud')" class="feature-card inactive wordcloud px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
         <span class="text-xl">☁️</span>
         Word Cloud
-        <div class="preview-area w-full preview-loading" id="wordcloudPreview"></div>
+        <div class="preview-area w-full" id="wordcloudPreview"></div>
       </button>
       <button type="button" onclick="goToFeature('topeditors')" class="feature-card inactive topeditors px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
         <span class="text-xl">👤</span>
         Top Editors
-        <div class="preview-area w-full preview-loading" id="topeditorsPreview"></div>
+        <div class="preview-area w-full" id="topeditorsPreview"></div>
       </button>
       <button type="button" onclick="goToFeature('timeline')" class="feature-card inactive timeline px-3 py-4 min-h-[100px] h-[120px] rounded-xl shadow text-base font-semibold flex flex-col items-center gap-1 transition relative" disabled>
         <span class="text-xl">🕒</span>
         Revision Timeline
-        <div class="preview-area w-full preview-loading" id="timelinePreview"></div>
+        <div class="preview-area w-full" id="timelinePreview"></div>
       </button>
     </div>
   </form>
+  <div class="absolute top-4 right-8">
+    <% if (user) { %>
+      <form action="/logout" method="get">
+        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow transition">Logout</button>
+      </form>
+    <% } %>
+  </div>
   <script>
     function goToFeature(feature) {
       const title = document.getElementById('titleInput').value.trim();
@@ -127,12 +125,10 @@
     }
     titleInput.addEventListener('input', updateCards);
     updateCards(); 
-
-   
     let previewTimeout;
     titleInput.addEventListener('input', function() {
       clearTimeout(previewTimeout);
-      setPreviewLoading();
+      clearPreviews();
       if (titleInput.value.trim().length > 0) {
         previewTimeout = setTimeout(fetchPreviews, 500);
       } else {
@@ -142,12 +138,10 @@
         document.getElementById('timelinePreview').innerHTML = '';
       }
     });
-    function setPreviewLoading() {
+    function clearPreviews() {
       ["editsPreview","wordcloudPreview","topeditorsPreview","timelinePreview"].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-          el.classList.add('preview-loading');
-          el.classList.remove('preview-loaded');
           el.innerHTML = '';
         }
       });
@@ -155,18 +149,57 @@
     function setPreviewLoaded(id, html) {
       const el = document.getElementById(id);
       if (el) {
-        el.classList.remove('preview-loading');
-        el.classList.add('preview-loaded');
         el.innerHTML = html;
       }
     }
-   
+    const titleInputEl = document.getElementById('titleInput');
+    const recentDropdown = document.getElementById('recentDropdown');
+    function getRecentTitles() {
+      return JSON.parse(localStorage.getItem('recentTitles') || '[]');
+    }
+    function saveRecentTitle(title) {
+      let titles = getRecentTitles();
+      title = title.trim();
+      if (!title) return;
+      titles = titles.filter(t => t.toLowerCase() !== title.toLowerCase());
+      titles.unshift(title);
+      if (titles.length > 5) titles = titles.slice(0, 5);
+      localStorage.setItem('recentTitles', JSON.stringify(titles));
+    }
+    function showRecentDropdown() {
+      const titles = getRecentTitles();
+      if (!titles.length) { recentDropdown.classList.add('hidden'); return; }
+      recentDropdown.innerHTML = titles.map((t, i) => `
+        <li class='flex items-center justify-between px-4 py-2 hover:bg-blue-100 cursor-pointer' data-title="${t.replace(/"/g, '&quot;')}">
+          <span class="flex-1" data-title="${t.replace(/"/g, '&quot;')}">${t}</span>
+          <button type="button" class="ml-2 text-red-500 opacity-80 hover:opacity-100 delete-recent-btn" data-index="${i}" tabindex="-1">✕</button>
+        </li>
+      `).join('');
+      recentDropdown.classList.remove('hidden');
+    }
+    titleInputEl.addEventListener('focus', showRecentDropdown);
+    titleInputEl.addEventListener('blur', () => setTimeout(() => recentDropdown.classList.add('hidden'), 150));
+    recentDropdown.addEventListener('mousedown', e => {
+      if (e.target && e.target.classList.contains('delete-recent-btn')) {
+        e.stopPropagation();
+        const idx = parseInt(e.target.dataset.index, 10);
+        let titles = getRecentTitles();
+        titles.splice(idx, 1);
+        localStorage.setItem('recentTitles', JSON.stringify(titles));
+        showRecentDropdown();
+        return;
+      }
+      if (e.target && e.target.dataset.title) {
+        titleInputEl.value = e.target.dataset.title;
+        recentDropdown.classList.add('hidden');
+        titleInputEl.dispatchEvent(new Event('input'));
+      }
+    });
     function showAllPreviews(previews) {
       setPreviewLoaded('editsPreview', previews.edits);
       setPreviewLoaded('wordcloudPreview', previews.wordcloud);
       setPreviewLoaded('topeditorsPreview', previews.topeditors);
       setPreviewLoaded('timelinePreview', previews.timeline);
-      
       document.querySelector('.feature-card.edits').classList.remove('inactive');
       document.querySelector('.feature-card.edits').classList.add('active');
       document.querySelector('.feature-card.edits').disabled = false;
@@ -179,12 +212,12 @@
       document.querySelector('.feature-card.timeline').classList.remove('inactive');
       document.querySelector('.feature-card.timeline').classList.add('active');
       document.querySelector('.feature-card.timeline').disabled = false;
+      saveRecentTitle(titleInputEl.value);
     }
     function fetchPreviews() {
       const title = titleInput.value.trim();
       if (!title) return;
-      setPreviewLoading();
-      
+      clearPreviews();
       const editsPromise = fetch(`/edits?title=${encodeURIComponent(title)}&preview=1`).then(r=>r.json()).then(data => {
         if (data && data.labels && data.data && data.labels.length) {
           let html = '<table class="preview-table w-full"><thead><tr><th>Date</th><th>Edits</th></tr></thead><tbody>';
@@ -196,7 +229,7 @@
         }
         return '';
       });
-      const topeditorsPromise = fetch(`/topeditors?title=${encodeURIComponent(title)}&preview=1`).then(r=>r.json()).then(data => {
+      const topeditorsPromise = fetch(`/topeditors?title=${encodeURIComponent(title)}&preview=1`).then(r => r.json()).then(data => {
         if (data && data.length) {
           let html = '<table class="preview-table w-full"><thead><tr><th>Editor</th><th>Edits</th></tr></thead><tbody>';
           data.slice(0,3).forEach(e => {
